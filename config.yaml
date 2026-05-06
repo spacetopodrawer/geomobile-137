@@ -1,0 +1,258 @@
+# Cadastre_IA Core Configuration
+# Version: 3.0 Native Autonomous
+
+# System Settings
+system:
+  device_id: "local-device-0"
+  device_name: "Local Testing Device"
+  device_type: "desktop"  # desktop, mobile, arcade
+  owner: "Local Admin"
+
+# Storage Configuration
+storage:
+  type: "sqlite"
+  sqlite:
+    path: "./cadastre_ia.db"
+    max_connections: 10
+    auto_backup: true
+    backup_interval_hours: 24
+    enable_wal: true
+    page_size: 4096
+    cache_size_pages: 10000
+
+# Sync Configuration
+sync:
+  enabled: true
+  protocol: "websocket"
+  p2p_mode: true
+  vector_clock_enabled: true
+  conflict_resolution: "operational_transform"
+
+  # WebSocket settings
+  websocket:
+    port: 8080
+    path: "/ws/sync"
+    read_timeout_seconds: 60
+    write_timeout_seconds: 60
+    max_message_size: 1048576  # 1MB
+
+  # Replication settings
+  replication:
+    batch_size: 100
+    sync_interval_ms: 500
+    max_queue_size: 10000
+    retry_attempts: 3
+    retry_delay_ms: 1000
+
+# Sensor Configuration
+sensors:
+  gnss:
+    enabled: true
+    accuracy_threshold_m: 10.0
+    min_satellites: 4
+
+  imu:
+    enabled: true
+    sample_rate_hz: 100
+
+  photogrammetry:
+    enabled: true
+    min_confidence: 0.7
+
+  drone:
+    enabled: true
+    max_altitude_m: 500
+
+  camera:
+    enabled: true
+    feature_detection: "sift"
+    min_feature_strength: 0.7
+
+  lidar:
+    enabled: true
+    resolution_cm: 5
+
+# Arcade/Game Configuration
+arcade:
+  enabled: true
+  game_title: "Cadastre_IA: GeoMobile v137"
+
+  # Display settings (Neo-Geo compatible)
+  display:
+    width: 256
+    height: 224
+    colors: 16  # 16-color palette
+    fps: 60
+
+  # Sprite settings
+  sprites:
+    default_width: 32
+    default_height: 32
+    max_sprites: 256
+    animation_enabled: true
+    default_frame_duration_ms: 100
+
+  # Input settings
+  input:
+    joystick_enabled: true
+    button_mapping:
+      - action: "move"
+        keys: ["up", "down", "left", "right"]
+      - action: "scan"
+        keys: ["button_a"]
+      - action: "zoom"
+        keys: ["button_b"]
+      - action: "inventory"
+        keys: ["button_c"]
+      - action: "sync"
+        keys: ["button_d"]
+
+# Rendering Configuration
+rendering:
+  arcade_renderer:
+    enabled: true
+    palette_file: "./assets/arcade_palette.pal"
+    sprite_sheet_path: "./assets/sprites/"
+
+  vector_renderer:
+    enabled: true
+    format: "svg"  # svg, json
+
+  3d_renderer:
+    enabled: true
+    format: "gltf"
+    max_model_size_mb: 50
+
+# Conversion Settings
+conversion:
+  sensor_to_vector:
+    enabled: true
+    default_coordinate_frame: "WGS84"
+    merge_multiple_sensors: true
+
+  vector_to_arcade:
+    enabled: true
+    sprite_width: 32
+    sprite_height: 32
+    optimize_for_arcade: true
+
+  vector_to_3d:
+    enabled: true
+    format: "gltf"
+
+# Logging Configuration
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json, text
+  output: "console"  # console, file, both
+
+  file:
+    enabled: true
+    path: "./logs/cadastre_ia.log"
+    max_size_mb: 100
+    max_backups: 5
+    max_age_days: 30
+
+# Development Settings
+development:
+  debug_mode: false
+  mock_sensors: false  # Use mock data if sensors unavailable
+  verbose_logging: false
+  enable_profiling: false
+  enable_hot_reload: false
+
+# Performance Tuning
+performance:
+  # Memory limits
+  max_memory_mb: 500
+  gc_interval_ms: 5000
+
+  # Database optimization
+  db_query_timeout_ms: 5000
+  db_connection_pool_size: 10
+
+  # Sync optimization
+  sync_batch_mode: true
+  sync_compression: "deflate"
+
+  # Rendering optimization
+  render_cache_enabled: true
+  render_cache_size_mb: 100
+  sprite_pooling: true
+
+# Security Settings
+security:
+  # Device authentication (simple token-based)
+  enable_auth: false
+  token_expiry_hours: 24
+
+  # Data encryption
+  enable_encryption: false
+  encryption_algorithm: "aes-256-gcm"
+
+  # Audit logging
+  enable_audit_log: true
+  audit_retention_days: 90
+
+# Advanced Settings
+advanced:
+  # Operational Transform parameters
+  ot_history_size: 10000
+  conflict_detection_enabled: true
+  auto_merge_compatible_ops: true
+
+  # Replication strategy
+  full_sync_interval_hours: 24
+  incremental_sync: true
+
+  # Custom sensor adapters
+  enable_custom_sensors: true
+  custom_sensor_timeout_ms: 5000
+
+# Feature Flags
+features:
+  multi_device_sync: true
+  offline_mode: true
+  conflict_resolution_ui: true
+  real_time_collaboration: true
+  mobile_support: true
+  arcade_emulator_support: true
+  3d_visualization: true
+  data_export: true
+
+# External Integrations (Optional)
+integrations:
+  earth_studio:
+    enabled: false
+    api_key: "YOUR_API_KEY"
+
+  map_service:
+    enabled: true
+    provider: "osm"  # osm, mapbox, google
+
+  cloud_backup:
+    enabled: false
+    provider: "s3"
+    bucket: "cadastre-ia-backups"
+
+# Default Paths
+paths:
+  data_dir: "./data"
+  cache_dir: "./cache"
+  logs_dir: "./logs"
+  assets_dir: "./assets"
+  temp_dir: "./temp"
+
+# Database Migrations
+migrations:
+  auto_run: true
+  schema_version: 1
+
+# Server Configuration (if REST API needed)
+server:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8080
+  tls_enabled: false
+
+# End of configuration

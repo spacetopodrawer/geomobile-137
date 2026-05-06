@@ -1,0 +1,48 @@
+﻿# Binaires
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Databases
+cadastre_ia.db
+cadastre_ia.db-*
+*.db-*
+
+# Logs
+*.log
+server_stdout.log
+server_stderr.log
+server_output.log
+
+# Scripts temporaires
+*.sh
+*.ps1
+run-tests-*.sh
+test-*.ps1
+start-*.sh
+
+# Build artifacts
+build.log
+build/
+dist/
+
+# Docker (optionnel)
+docker-compose.yml
+Dockerfile
+
+# Fichiers de session/config temporaires
+*.tmp
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
