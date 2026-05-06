@@ -1,9 +1,18 @@
 # Cadastre_IA Core Configuration
 # Version: 3.0 Native Autonomous
 
+# Project Metadata
+project:
+  name: "CADASTRE_IA: geo-mobile"
+  family: "geo-mobile"
+  instance: "137"
+  version: "0.2.0-arcade"
+  release_codename: "NEO-GEO Arcade Emulation"
+  description: "Real-time Geospatial Arcade Game with Native P2P Synchronization"
+
 # System Settings
 system:
-  device_id: "local-device-0"
+  device_id: "geo-mobile-137-main"
   device_name: "Local Testing Device"
   device_type: "desktop"  # desktop, mobile, arcade
   owner: "Local Admin"
