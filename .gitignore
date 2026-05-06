@@ -1,48 +1,119 @@
-﻿# Binaires
+﻿# ============================================
+# CADASTRE_IA: geo-mobile-137
+# .gitignore for Open Source + Commercial
+# ============================================
+
+# BINAIRES COMPILÉES
 *.exe
 *.dll
 *.so
 *.dylib
+*.a
+*.o
+*.out
+server
 
-# Databases
-cadastre_ia.db
-cadastre_ia.db-*
+# DATABASES (données locales)
+*.db
 *.db-*
+*.db-shm
+*.db-wal
+cadastre_ia.db*
 
-# Logs
+# LOGS & TEMPORAIRES
 *.log
 server_stdout.log
 server_stderr.log
 server_output.log
+*.tmp
+*.temp
 
-# Scripts temporaires
-*.sh
-*.ps1
-run-tests-*.sh
-test-*.ps1
-start-*.sh
-
-# Build artifacts
-build.log
+# BUILD ARTIFACTS
 build/
 dist/
+bin/
+out/
+.build/
+build.log
+*.mod.old
 
-# Docker (optionnel)
-docker-compose.yml
-Dockerfile
+# GO SPECIFIC
+vendor/
+go.sum.old
+*.test
+coverage.out
 
-# Fichiers de session/config temporaires
-*.tmp
+# SECRETS & CONFIGURATION SENSIBLES
 .env
 .env.local
+.env.*.local
+config.local.yaml
+secrets/
+.credentials
+*.pem
+*.key
+.ssh/
+.gpg/
 
-# IDE
+# DONNÉES SENSIBLES (pour modèle commercial)
+private_data/
+test_credentials.json
+api_keys.json
+database_backups/
+
+# CACHE & TEMP
+cache/
+tmp/
+temp/
+.cache/
+*.cache
+
+# IDE & EDITEURS
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.vim/
+.emacs.d/
+
+# OS SPÉCIFIQUES
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# NODE (si frontend React PWA)
+node_modules/
+package-lock.json
+yarn.lock
+dist/
+.next/
+out/
+
+# DOCKER (optional - INCLURE pour collaboration)
+# docker-compose.override.yml
+# .dockerignore est séparé
+
+# ARCHIVES
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# PROFILING & BENCHMARKS
+*.prof
+*.pprof
+*.memprof
+
+# AI/ML MODELS (si Phase 4+)
+*.h5
+*.pb
+*.onnx
+models/trained/
+
