@@ -1,8 +1,11 @@
-# Cadastre_IA - Solo Mode (Local Testing)
+# CADASTRE_IA: geo-mobile (Instance 137)
 
-**Status:** ✅ Ready for testing  
-**Version:** 2.0 Solo  
-**Date:** 2026-05-05
+**Family:** geo-mobile  
+**Instance:** 137  
+**Status:** 🟢 Production Ready  
+**Version:** v0.2.0-arcade-137  
+**Release Codename:** NEO-GEO Arcade Emulation  
+**Date:** 2026-05-06
 
 ## 🚀 Quick Start
 
@@ -86,16 +89,24 @@ docker-compose down -v
 ## 📁 Project Structure
 
 ```
-geomobile137-solo/
-├── cmd/server/           # Main server entry point
-├── internal/             # Internal packages (api, service, storage, websocket)
-├── migrations/           # SQL migration files
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile            # Go server container image
+geo-mobile-137/
+├── cmd/
+│   ├── server/           # Server orchestrator with arcade init
+│   └── test/             # Integration and arcade test suites
+├── pkg/
+│   ├── arcade/           # Phase 3: NEO-GEO emulation (ROM compiler, input mapping, emulator)
+│   ├── game/             # 60 FPS game loop
+│   ├── storage/          # SQLite3 with WAL
+│   ├── sync/             # Vector Clock + Operational Transform + WebSocket
+│   ├── convert/          # Sensor-to-vector + Vector-to-arcade rendering
+│   └── model/            # Data structures
+├── migrations/           # SQLite schema
+├── config.yaml           # Project configuration
+├── docker-compose.yml    # Docker Compose configuration (optional)
+├── Dockerfile            # Go server container image (optional)
 ├── go.mod, go.sum       # Go dependencies
-├── START_EVERYTHING.sh  # Main launcher script
-├── run-tests-lite.sh    # Lightweight test suite
-└── logs/                # Execution logs
+├── server.exe            # Compiled binary (19.5+ MB)
+└── docs/                 # Documentation (PHASE_3_*, README_*, etc.)
 ```
 
 ## ✅ Expected Test Results

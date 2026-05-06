@@ -1,8 +1,12 @@
 # 🎮 Phase 3: NEO-GEO Arcade Emulation Integration
+## CADASTRE_IA: geo-mobile-137
 
 **Status:** ✅ COMPLETE & TESTED  
 **Date:** 2026-05-06  
-**Version:** v0.1.0 + Arcade Module  
+**Version:** v0.2.0-arcade-137  
+**Release Codename:** NEO-GEO Arcade Emulation  
+**Family:** geo-mobile  
+**Instance:** 137  
 **GitHub:** spacetopodrawer@github.com
 
 ---

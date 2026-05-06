@@ -1,10 +1,13 @@
 # 🎮 Phase 3 Completion Report
-## CADASTRE_IA: GeoMobile v137 - Arcade Emulation Ready
+## CADASTRE_IA: geo-mobile Instance 137 - Arcade Emulation Ready
 
 **Date:** 2026-05-06  
 **Time:** 17:14:43  
 **Status:** ✅ PHASE 3 COMPLETE  
-**Version Target:** v0.2.0 (Phase 3)
+**Version:** v0.2.0-arcade-137  
+**Release Codename:** NEO-GEO Arcade Emulation  
+**Family:** geo-mobile  
+**Instance:** 137
 
 ---
 
