@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"cadastreia/pkg/sync"
+	syncsvc "cadastreia/pkg/sync"
 )
 
 // NeoRageX5Emulator represents the NeoRageX5 emulator runtime
@@ -22,7 +22,7 @@ type NeoRageX5Emulator struct {
 	inputListener      net.Listener
 	protocol           *NeoRageX5Protocol
 	gameState          *GameState
-	syncManager        *sync.SyncManager
+	syncManager        *syncsvc.SyncManager
 	frameCount         uint64
 	fps                int
 	running            bool
@@ -118,7 +118,7 @@ func NewNeoRageX5Emulator(basePort int, romPath string) *NeoRageX5Emulator {
 				Zoom: 1.0,
 			},
 		},
-		syncManager: sync.NewSyncManager("emulator-main"),
+		syncManager: syncsvc.NewSyncManager("emulator-main"),
 		fps:         60,
 		closeChan:   make(chan bool),
 	}

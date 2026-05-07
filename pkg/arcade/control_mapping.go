@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// JoystickButton represents a physical button on NEO-GEO controller
-type JoystickButton uint8
+// JoystickButton represents a physical button on arcade controller
+type JoystickButton uint16
 
 const (
 	// Direction buttons
@@ -16,13 +16,13 @@ const (
 	JoystickRight JoystickButton = 0x08
 
 	// Action buttons
-	ButtonA JoystickButton = 0x10 // NEO-GEO Button A (punch)
-	ButtonB JoystickButton = 0x20 // NEO-GEO Button B (kick)
-	ButtonC JoystickButton = 0x40 // NEO-GEO Button C (special)
-	ButtonD JoystickButton = 0x80 // NEO-GEO Button D (guard)
+	ButtonA JoystickButton = 0x10 // Button A (punch)
+	ButtonB JoystickButton = 0x20 // Button B (kick)
+	ButtonC JoystickButton = 0x40 // Button C (special)
+	ButtonD JoystickButton = 0x80 // Button D (guard)
 
 	// Extra controls
-	Coin JoystickButton = 0x100
+	Coin  JoystickButton = 0x100
 	Start JoystickButton = 0x200
 )
 

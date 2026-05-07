@@ -81,16 +81,62 @@ sensors:
     enabled: true
     resolution_cm: 5
 
-# Arcade/Game Configuration
+# Arcade/Game Configuration (Phase 4.5 Framework)
 arcade:
   enabled: true
+  framework_version: "v0.3.0-arcade-framework"
   game_title: "Cadastre_IA: GeoMobile v137"
 
-  # Display settings (Neo-Geo compatible)
+  # Framework configuration (all systems equal priority)
+  framework:
+    default_system: "neogeo"        # NEO-GEO is primary but not exclusive
+    auto_detect_rom: true           # Auto-detect system from ROM
+    plugin_directory: "./plugins/arcade"
+
+  # Multi-system support (Phase 4.5A)
+  systems:
+    neogeo:
+      enabled: true
+      priority: 1
+      privileged: true              # NEO-GEO remains primary (not exclusive)
+      description: "NEO-GEO arcade system"
+      rom_path: "./roms/neogeo/"
+
+    mame:
+      enabled: false                # Disabled until Phase 4.5 Week 2
+      priority: 2
+      description: "MAME multi-arcade emulator"
+      rom_path: "./roms/mame/"
+
+    fbneo:
+      enabled: false                # Disabled until Phase 4.5 Week 2
+      priority: 2
+      description: "Final Burn Neo arcade emulator"
+      rom_path: "./roms/fbneo/"
+
+    cps1cps2:
+      enabled: false                # Disabled until Phase 4.5 Week 3
+      priority: 3
+      description: "Capcom Play System 1/2"
+      rom_path: "./roms/cps/"
+
+    atari2600:
+      enabled: false                # Disabled until Phase 4.5 Week 3
+      priority: 3
+      description: "Atari 2600 home console"
+      rom_path: "./roms/atari2600/"
+
+    commodore64:
+      enabled: false                # Disabled until Phase 4.5 Week 3
+      priority: 3
+      description: "Commodore 64 computer"
+      rom_path: "./roms/commodore64/"
+
+  # Display settings (NEO-GEO compatible, overridable per system)
   display:
-    width: 256
+    width: 320
     height: 224
-    colors: 16  # 16-color palette
+    colors: 16                      # 16-color palette
     fps: 60
 
   # Sprite settings

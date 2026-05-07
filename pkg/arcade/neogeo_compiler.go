@@ -9,8 +9,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-
-	"cadastreia/pkg/model"
 )
 
 // NEOGEOCompiler converts game assets to NEO-GEO ROM format
@@ -65,7 +63,7 @@ func NewNEOGEOCompiler(outputPath string) *NEOGEOCompiler {
 }
 
 // CompileGameState converts current game state to NEO-GEO ROM
-func (nc *NEOGEOCompiler) CompileGameState(gameState *model.GameState, outputFile string) error {
+func (nc *NEOGEOCompiler) CompileGameState(gameState *GameState, outputFile string) error {
 	if gameState == nil {
 		return fmt.Errorf("game state is nil")
 	}
@@ -133,7 +131,7 @@ func (nc *NEOGEOCompiler) createHeader() NEOGEOROMHeader {
 }
 
 // compileGameLogic converts game state to Z80 bytecode
-func (nc *NEOGEOCompiler) compileGameLogic(gameState *model.GameState) []byte {
+func (nc *NEOGEOCompiler) compileGameLogic(gameState *GameState) []byte {
 	var buf bytes.Buffer
 
 	// NEO-GEO Z80 bytecode structure
@@ -184,7 +182,7 @@ func (nc *NEOGEOCompiler) compileGameLogic(gameState *model.GameState) []byte {
 }
 
 // writeSpriteROM writes graphics data to ROM
-func (nc *NEOGEOCompiler) writeSpriteROM(f *os.File, gameState *model.GameState) error {
+func (nc *NEOGEOCompiler) writeSpriteROM(f *os.File, gameState *GameState) error {
 	// NEO-GEO sprite format: 16x16 tiles, 4-bit per pixel
 	// Typical sprite ROM: 64MB
 
@@ -215,7 +213,7 @@ func (nc *NEOGEOCompiler) writeSpriteROM(f *os.File, gameState *model.GameState)
 }
 
 // createPlayerSprite generates a player sprite
-func (nc *NEOGEOCompiler) createPlayerSprite(player *model.PlayerState) *SpriteData {
+func (nc *NEOGEOCompiler) createPlayerSprite(player *PlayerState) *SpriteData {
 	sprite := &SpriteData{
 		TileID:   0,
 		X:        int16(player.X),
@@ -235,7 +233,7 @@ func (nc *NEOGEOCompiler) createPlayerSprite(player *model.PlayerState) *SpriteD
 }
 
 // createObjectSprite generates an object sprite
-func (nc *NEOGEOCompiler) createObjectSprite(obj *model.VectorObject) *SpriteData {
+func (nc *NEOGEOCompiler) createObjectSprite(obj *ObjectState) *SpriteData {
 	sprite := &SpriteData{
 		TileID:   1,
 		X:        0, // Would calculate from geometry
@@ -270,6 +268,33 @@ func (nc *NEOGEOCompiler) writeSprite(f *os.File, sprite *SpriteData) error {
 
 	// Write sprite data
 	buf.Write(sprite.Data[:])
+
+	_, err := f.Write(buf.Bytes())
+	return err
+}
+
+// writeProgram writes the program ROM (Z80 bytecode) to file
+func (nc *NEOGEOCompiler) writeProgram(f *os.File, program *NEOGEOProgram) error {
+	var buf bytes.Buffer
+
+	// Write header
+	buf.Write(program.Header.Magic[:])
+	binary.Write(&buf, binary.BigEndian, program.Header.Version)
+	buf.Write(program.Header.GameTitle[:])
+	binary.Write(&buf, binary.BigEndian, program.Header.ReleaseDate)
+	binary.Write(&buf, binary.BigEndian, program.Header.ScreenWidth)
+	binary.Write(&buf, binary.BigEndian, program.Header.ScreenHeight)
+	buf.WriteByte(program.Header.ColorMode)
+	buf.Write(program.Header.Reserved[:])
+
+	// Write program metadata
+	binary.Write(&buf, binary.BigEndian, program.CRC32)
+	binary.Write(&buf, binary.BigEndian, program.Version)
+	binary.Write(&buf, binary.BigEndian, program.CheckSum)
+	binary.Write(&buf, binary.BigEndian, program.Hardware)
+
+	// Write code
+	buf.Write(program.Code)
 
 	_, err := f.Write(buf.Bytes())
 	return err
@@ -378,24 +403,21 @@ func GetNEOGEOPalette() [16]color.RGBA {
 }
 
 // CompileToFile compiles game state and writes to output file
-func (nc *NEOGEOCompiler) CompileToFile(gameState *model.GameState, outputFile string) error {
+func (nc *NEOGEOCompiler) CompileToFile(gameState *GameState, outputFile string) error {
 	return nc.CompileGameState(gameState, outputFile)
 }
 
 // GetROMInfo returns information about the compiled ROM
 func (nc *NEOGEOCompiler) GetROMInfo(romPath string) (map[string]interface{}, error) {
-	info := os.FileInfo{}
 	fileInfo, err := os.Stat(romPath)
 	if err != nil {
 		return nil, err
 	}
 
-	info = fileInfo
-
 	return map[string]interface{}{
 		"filename": filepath.Base(romPath),
-		"size":     info.Size(),
-		"modified": info.ModTime(),
+		"size":     fileInfo.Size(),
+		"modified": fileInfo.ModTime(),
 		"format":   "NEO-GEO .bin",
 		"hardware": "MVS 1A",
 	}, nil

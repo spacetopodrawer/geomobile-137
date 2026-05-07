@@ -139,7 +139,13 @@ func main() {
 	defer wsHub.Close()
 	fmt.Println("✓ WebSocket hub initialized")
 
-	// 3.5 Initialize NEO-GEO arcade emulator (Phase 3)
+	// 3.5 Initialize arcade framework (Phase 3.5)
+	// Phase 4.5 Note: Will transition to registry-based system selection:
+	//   arcade.InitRegistry()
+	//   arcade.RegisterSystem("neogeo", systems/neogeo.Factory, spec)
+	//   emulator, _ := arcade.GetArcadeEmulator("neogeo", 9001, romPath)
+	//   var arcadeEmulator arcade.ArcadeEmulator = emulator
+	// For now (Phase 3), keep existing NeoRageX5Emulator implementation
 	var arcadeEmulator *arcade.NeoRageX5Emulator
 	if config.Arcade.Enabled {
 		fmt.Println("\n[3.5/5] Initializing NEO-GEO arcade emulator...")
