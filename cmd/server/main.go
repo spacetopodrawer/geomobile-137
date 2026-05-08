@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"cadastreia/pkg/arcade"
+	"cadastreia/pkg/arcade/systems/neogeo"
 	"cadastreia/pkg/game"
 	"cadastreia/pkg/storage"
 	syncsvc "cadastreia/pkg/sync"
@@ -112,6 +113,15 @@ func setDefaults() {
 func main() {
 	printBanner()
 
+	// 0. Initialize arcade framework
+	fmt.Println("\n[0/5] Initializing arcade framework...")
+	arcade.InitRegistry()
+	if err := neogeo.RegisterNEOGEOSystem(); err != nil {
+		fmt.Printf("⚠️  Failed to register NEO-GEO system: %v\n", err)
+	} else {
+		fmt.Println("✓ NEO-GEO system registered")
+	}
+
 	// 1. Initialize storage
 	fmt.Println("\n[1/5] Initializing SQLite database...")
 	storageConfig := storage.StorageConfig{
@@ -139,25 +149,29 @@ func main() {
 	defer wsHub.Close()
 	fmt.Println("✓ WebSocket hub initialized")
 
-	// 3.5 Initialize arcade framework (Phase 3.5)
-	// Phase 4.5 Note: Will transition to registry-based system selection:
-	//   arcade.InitRegistry()
-	//   arcade.RegisterSystem("neogeo", systems/neogeo.Factory, spec)
-	//   emulator, _ := arcade.GetArcadeEmulator("neogeo", 9001, romPath)
-	//   var arcadeEmulator arcade.ArcadeEmulator = emulator
-	// For now (Phase 3), keep existing NeoRageX5Emulator implementation
-	var arcadeEmulator *arcade.NeoRageX5Emulator
+	// 3.5 Initialize arcade emulator (Phase 4.5 refactored)
+	var arcadeEmulator arcade.ArcadeEmulator
 	if config.Arcade.Enabled {
-		fmt.Println("\n[3.5/5] Initializing NEO-GEO arcade emulator...")
+		fmt.Println("\n[3.5/5] Initializing arcade emulator...")
+
+		// Use registry to get configured default system (NEO-GEO by default)
+		systemID := "neogeo"
 		romPath := "./cadastre_ia.neo"
-		arcadeEmulator = arcade.NewNeoRageX5Emulator(9001, romPath)
-		if err := arcadeEmulator.Start(); err != nil {
-			fmt.Printf("⚠️  Arcade emulator failed to start: %v\n", err)
+		basePort := 9001
+
+		emulator, err := arcade.GetArcadeEmulator(systemID, basePort, romPath)
+		if err != nil {
+			fmt.Printf("⚠️  Failed to create %s emulator: %v\n", systemID, err)
 		} else {
-			defer arcadeEmulator.Stop()
-			fmt.Println("✓ NEO-GEO arcade emulator started")
-			fmt.Printf("  Command port: 9001 (game logic/sync)\n")
-			fmt.Printf("  Input port:   9002 (controller input)\n")
+			arcadeEmulator = emulator
+			if err := arcadeEmulator.Start(); err != nil {
+				fmt.Printf("⚠️  Arcade emulator failed to start: %v\n", err)
+			} else {
+				defer arcadeEmulator.Stop()
+				fmt.Println("✓ NEO-GEO arcade emulator started")
+				fmt.Printf("  Command port: 9001 (game logic/sync)\n")
+				fmt.Printf("  Input port:   9002 (controller input)\n")
+			}
 		}
 	}
 
@@ -222,7 +236,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // statusHandler returns system status
-func statusHandler(wsHub *syncsvc.WebSocketHub, ge *game.GameEngine, sm *storage.StorageManager, ae *arcade.NeoRageX5Emulator) http.HandlerFunc {
+func statusHandler(wsHub *syncsvc.WebSocketHub, ge *game.GameEngine, sm *storage.StorageManager, ae arcade.ArcadeEmulator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -241,7 +255,7 @@ func statusHandler(wsHub *syncsvc.WebSocketHub, ge *game.GameEngine, sm *storage
 }
 
 // statsHandler returns detailed statistics
-func statsHandler(wsHub *syncsvc.WebSocketHub, ge *game.GameEngine, sm *storage.StorageManager, ae *arcade.NeoRageX5Emulator) http.HandlerFunc {
+func statsHandler(wsHub *syncsvc.WebSocketHub, ge *game.GameEngine, sm *storage.StorageManager, ae arcade.ArcadeEmulator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -273,7 +287,7 @@ func statsHandler(wsHub *syncsvc.WebSocketHub, ge *game.GameEngine, sm *storage.
 }
 
 // arcadeStatusHandler returns arcade emulator status
-func arcadeStatusHandler(ae *arcade.NeoRageX5Emulator) http.HandlerFunc {
+func arcadeStatusHandler(ae arcade.ArcadeEmulator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
