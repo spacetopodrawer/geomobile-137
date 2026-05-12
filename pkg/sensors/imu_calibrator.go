@@ -185,6 +185,7 @@ func (i *IMUCalibrator) EstimateDrift(samples []IMUSample) float64 {
 
 // FuseSensors applies extended Kalman filter to fuse accelerometer, gyroscope, and magnetometer
 // Estimates position, velocity, and attitude (orientation)
+// Uses 15-state EKF with process and measurement noise modeling
 // Input: previous Kalman state, current IMU sample
 // Output: updated Kalman state with fused estimates
 func (i *IMUCalibrator) FuseSensors(prevState *KalmanState, sample *IMUSample) (*KalmanState, error) {
@@ -203,16 +204,93 @@ func (i *IMUCalibrator) FuseSensors(prevState *KalmanState, sample *IMUSample) (
 		dt = 0.01 // Default to 10ms
 	}
 
-	// Prediction step: integrate gyroscope (without bias) to update attitude
-	// TODO: Implement quaternion integration or rotation matrix update
-	// TODO: Integrate velocity using accelerometer
-	// TODO: Predict covariance using state transition Jacobian
+	// ===== PREDICTION STEP =====
+	// Propagate state using kinematic model
 
-	// Update step: correct estimates using measurements
-	// TODO: Compute innovation (measurement - prediction)
-	// TODO: Compute Kalman gain
-	// TODO: Update state estimate
-	// TODO: Update covariance matrix
+	// Update position: p = p + v*dt
+	newState.Position[0] += newState.Velocity[0] * dt
+	newState.Position[1] += newState.Velocity[1] * dt
+	newState.Position[2] += newState.Velocity[2] * dt
+
+	// Update velocity: v = v + a*dt (excluding gravity)
+	accelX := sample.AccelX - i.BiasAccel[0]
+	accelY := sample.AccelY - i.BiasAccel[1]
+	accelZ := sample.AccelZ - i.BiasAccel[2] + 9.81 // Remove gravity
+
+	newState.Velocity[0] += accelX * dt
+	newState.Velocity[1] += accelY * dt
+	newState.Velocity[2] += accelZ * dt
+
+	// Update attitude (roll, pitch, yaw) via gyroscope integration
+	// Simplified: integrate angular velocities with bias removal
+	gyroX := sample.GyroX - i.BiasGyro[0]
+	gyroY := sample.GyroY - i.BiasGyro[1]
+	gyroZ := sample.GyroZ - i.BiasGyro[2]
+
+	// Small angle approximation for roll, pitch; wrap yaw to [-π, π]
+	newState.Attitude[0] += gyroX * dt  // Roll rate
+	newState.Attitude[1] += gyroY * dt  // Pitch rate
+	newState.Attitude[2] += gyroZ * dt  // Yaw rate
+
+	// Keep yaw in [-π, π]
+	for newState.Attitude[2] > 3.14159 {
+		newState.Attitude[2] -= 6.28318
+	}
+	for newState.Attitude[2] < -3.14159 {
+		newState.Attitude[2] += 6.28318
+	}
+
+	// Predict covariance matrix
+	// P = F*P*F^T + Q
+	// For simplified 15x15: propagate diagonal terms with process noise
+	processNoise := [15]float64{
+		1e-6, 1e-6, 1e-6, // Position noise
+		i.GyroNoise * i.GyroNoise, // Velocity noise (from gyro)
+		i.GyroNoise * i.GyroNoise,
+		i.GyroNoise * i.GyroNoise,
+		1e-9, 1e-9, 1e-9, // Attitude noise (very small for attitude)
+		1e-10, 1e-10, 1e-10, // Gyro bias drift
+		1e-10, 1e-10, 1e-10, // Accel bias drift
+	}
+
+	for j := 0; j < 15; j++ {
+		newState.Covariance[j][j] += processNoise[j] * dt
+	}
+
+	// ===== MEASUREMENT UPDATE STEP =====
+	// Correct state based on accelerometer and magnetometer measurements
+
+	// Measurement innovation from accelerometer (gravity vector)
+	// Expected: [0, 0, -g] in body frame
+	measAccel := [3]float64{sample.AccelX, sample.AccelY, sample.AccelZ}
+	expectedAccel := [3]float64{0, 0, -9.81}
+
+	// Compute Kalman gain (simplified for diagonal covariance)
+	// K = P*H^T / (H*P*H^T + R)
+	measurementNoise := i.AccelNoise * i.AccelNoise
+	kalmanGainAccel := newState.Covariance[4][4] / (newState.Covariance[4][4] + measurementNoise)
+
+	// Update velocity estimate with accelerometer measurement
+	innovationAccel := measAccel[2] - expectedAccel[2]
+	newState.Velocity[2] += kalmanGainAccel * innovationAccel * 0.1
+
+	// Update covariance after measurement
+	// P = (I - K*H)*P
+	updateFactor := (1.0 - kalmanGainAccel)
+	newState.Covariance[4][4] *= updateFactor
+	newState.Covariance[5][5] *= updateFactor
+	newState.Covariance[6][6] *= updateFactor
+
+	// Magnetometer measurement (North reference)
+	// Help estimate yaw angle
+	if sample.MagX != 0 || sample.MagY != 0 {
+		measYaw := computeYawFromMagnetometer(sample.MagX, sample.MagY, sample.MagZ)
+		yawInnovation := normalizeAngle(measYaw - newState.Attitude[2])
+
+		kalmanGainYaw := newState.Covariance[8][8] / (newState.Covariance[8][8] + 0.01)
+		newState.Attitude[2] += kalmanGainYaw * yawInnovation * 0.05
+		newState.Covariance[8][8] *= (1.0 - kalmanGainYaw)
+	}
 
 	i.LastKalmanState = &newState
 	i.MeasurementCount++
@@ -271,4 +349,37 @@ func (i *IMUCalibrator) GetCalibrationStatus() string {
 
 	return fmt.Sprintf("%s Calibrated (drift: %.3f °/sec, samples: %d)",
 		driftStatus, i.DriftEstimate, i.MeasurementCount)
+}
+
+// ===== HELPER FUNCTIONS =====
+
+// computeYawFromMagnetometer estimates yaw angle from magnetometer readings
+// Uses arctangent of X/Y components in body frame
+func computeYawFromMagnetometer(magX, magY, magZ float64) float64 {
+	// Normalize magnetometer vector
+	mag := math.Sqrt(magX*magX + magY*magY + magZ*magZ)
+	if mag == 0 {
+		return 0
+	}
+
+	magX /= mag
+	magY /= mag
+
+	// Compute yaw as atan2(Y, X)
+	yaw := math.Atan2(magY, magX)
+
+	// Add magnetic declination (varies by location, default 0)
+	// Real implementation would set this based on GPS location
+	return yaw
+}
+
+// normalizeAngle brings angle to [-π, π] range
+func normalizeAngle(angle float64) float64 {
+	for angle > 3.14159 {
+		angle -= 6.28318
+	}
+	for angle < -3.14159 {
+		angle += 6.28318
+	}
+	return angle
 }
