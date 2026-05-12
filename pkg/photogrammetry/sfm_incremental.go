@@ -31,9 +31,9 @@ type SfMIncremental struct {
 // NewSfMIncremental creates a new incremental SfM reconstructor
 func NewSfMIncremental() *SfMIncremental {
 	return &SfMIncremental{
-		ImageSequence: make([]*CameraFrame, 0),
-		Points3D:      make([]*ReconstructionPoint, 0),
-		FeatureDetector: NewFeatureDetector("sift", 2000),
+		ImageSequence:   make([]*CameraFrame, 0),
+		Points3D:        make([]*ReconstructionPoint, 0),
+		FeatureDetector: NewFeatureDetector(),
 		FeatureMatcher:  NewFeatureMatcher(),
 	}
 }
