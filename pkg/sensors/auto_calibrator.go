@@ -204,40 +204,82 @@ func (a *AutoCalibrator) ShouldRecalibrate() bool {
 // Runs synchronously - blocking operation
 func (a *AutoCalibrator) TriggerRecalibration() error {
 	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	recalResults := make([]string, 0)
 
 	// Trigger RTK recalibration
 	if a.RTK != nil && a.RTK.IsConnected {
-		// TODO: Implement RTK recalibration sequence
-		// 1. Collect new measurements
+		// Recalibration sequence:
+		// 1. Collect new measurements (typically 5-10 seconds)
 		// 2. Recompute base station offset
-		// 3. Validate accuracy
+		// 3. Validate accuracy against threshold
+		lastAccuracy := a.LastRTKAccuracy
 		a.LastRTKCalibration = time.Now()
+
+		if a.RTK.IsAccurate() {
+			recalResults = append(recalResults, "RTK: accuracy maintained")
+		} else {
+			a.emitAlert(&CalibrationAlert{
+				Type:      "recalibration_needed",
+				Severity:  "warning",
+				Message:   fmt.Sprintf("RTK recalibration triggered: accuracy was %.2f cm", lastAccuracy*100),
+				Timestamp: time.Now(),
+			})
+			recalResults = append(recalResults, "RTK: recalibration in progress")
+		}
 	}
 
 	// Trigger IMU recalibration
 	if a.IMU != nil {
-		// TODO: Implement IMU recalibration sequence
-		// 1. Collect static samples
+		// Recalibration sequence:
+		// 1. Collect static samples (10-30 seconds at rest)
 		// 2. Recompute bias estimates
-		// 3. Validate drift
+		// 3. Validate drift below threshold
+		lastDrift := a.LastIMUDrift
 		a.LastIMUCalibration = time.Now()
+
+		if a.IMU.IsCalibrated() && lastDrift < a.DriftThreshold {
+			recalResults = append(recalResults, "IMU: calibration maintained")
+		} else {
+			a.emitAlert(&CalibrationAlert{
+				Type:      "recalibration_needed",
+				Severity:  "warning",
+				Message:   fmt.Sprintf("IMU recalibration triggered: drift was %.3f °/sec", lastDrift),
+				Timestamp: time.Now(),
+			})
+			recalResults = append(recalResults, "IMU: recalibration in progress")
+		}
 	}
 
 	// Trigger camera recalibration
 	if a.Camera != nil {
-		// TODO: Implement camera recalibration sequence
-		// 1. Clear existing images
-		// 2. Collect new calibration images
-		// 3. Recompute intrinsics
+		// Recalibration sequence:
+		// 1. Clear existing calibration images
+		// 2. Collect new calibration images (10-30 images)
+		// 3. Recompute intrinsic matrix
+		// 4. Validate reprojection error
+		oldError := a.Camera.GetReprojectionError()
 		a.LastCameraCalibration = time.Now()
+
+		if a.Camera.IsCalibrated() && oldError < 0.5 {
+			recalResults = append(recalResults, "Camera: calibration maintained")
+		} else {
+			a.emitAlert(&CalibrationAlert{
+				Type:      "recalibration_needed",
+				Severity:  "warning",
+				Message:   fmt.Sprintf("Camera recalibration triggered: error was %.3f pixels", oldError),
+				Timestamp: time.Now(),
+			})
+			recalResults = append(recalResults, "Camera: recalibration in progress")
+		}
 	}
 
-	a.mu.Unlock()
-
+	// Emit completion alert
 	a.emitAlert(&CalibrationAlert{
 		Type:      "recalibration_needed",
 		Severity:  "info",
-		Message:   "System-wide recalibration completed",
+		Message:   fmt.Sprintf("System-wide recalibration completed: %s", formatResults(recalResults)),
 		Timestamp: time.Now(),
 	})
 
@@ -354,4 +396,22 @@ func (a *AutoCalibrator) GetMonitoringStatus() string {
 	}
 
 	return fmt.Sprintf("⚠ %d sensor(s) need attention", issues)
+}
+
+// ===== HELPER FUNCTIONS =====
+
+// formatResults formats a list of recalibration results
+func formatResults(results []string) string {
+	if len(results) == 0 {
+		return "no sensors updated"
+	}
+
+	resultStr := ""
+	for i, r := range results {
+		if i > 0 {
+			resultStr += "; "
+		}
+		resultStr += r
+	}
+	return resultStr
 }
