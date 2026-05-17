@@ -231,7 +231,7 @@ func (p *PostgresDB) DeleteEntity(ctx context.Context, code string) error {
 }
 
 // GetEntitiesByBBox retrieves entities within a geographic bounding box
-func (p *PostgresDB) GetEntitiesByBBox(ctx context.Context, minX, minY, maxX, maxY float64, zoomLevel int) ([]cadastre.Entity, error) {
+func (p *PostgresDB) GetEntitiesByBBox(ctx context.Context, minX, minY, maxX, maxY float64, zoomLevel int) ([]interface{}, error) {
 	query := `
 		SELECT id, code, type, region, admin_unit,
 		       ST_AsGeoJSON(geometry) as geometry, attributes, created_at, updated_at
@@ -248,7 +248,7 @@ func (p *PostgresDB) GetEntitiesByBBox(ctx context.Context, minX, minY, maxX, ma
 	}
 	defer rows.Close()
 
-	entities := make([]cadastre.Entity, 0)
+	entities := make([]interface{}, 0)
 
 	for rows.Next() {
 		var entity cadastre.Entity

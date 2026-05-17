@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"cadastre_ia/pkg/cadastre"
@@ -23,10 +24,21 @@ func main() {
 	// Parse command-line flags
 	port := flag.Int("port", 8080, "HTTP server port")
 	dbMode := flag.String("db", "mock", "Database mode: 'mock' or 'postgres'")
-	dbConn := flag.String("db-conn", "postgres://user:password@localhost/cadastre_ia", "PostgreSQL connection string")
+	dbConn := flag.String("db-conn", "", "PostgreSQL connection string (if empty, uses environment or default)")
 	logFile := flag.String("log", "", "Log file path (empty = stdout)")
 
 	flag.Parse()
+
+	// If connection string not provided via flag, check environment or use default
+	if *dbConn == "" {
+		// Check for environment variable
+		if envConn := os.Getenv("DATABASE_URL"); envConn != "" {
+			*dbConn = envConn
+		} else {
+			// Use default (note: should be updated to use secure password in production)
+			*dbConn = "postgres://postgres:admin123@127.0.0.1:3779/geomobile137?sslmode=disable"
+		}
+	}
 
 	// Setup logging
 	var logOutput *os.File = os.Stdout
@@ -41,10 +53,10 @@ func main() {
 
 	logger := log.New(logOutput, "[cadastre-server] ", log.LstdFlags|log.Lshortfile)
 
-	logger.Println("="*70)
+	logger.Println(strings.Repeat("=", 70))
 	logger.Println("🚀 GEO-MOBILE137 CADASTRAL SERVER")
 	logger.Println("Phase 2.2 — CAD Converter Integration")
-	logger.Println("="*70)
+	logger.Println(strings.Repeat("=", 70))
 	logger.Printf("Starting server on port %d\n", *port)
 	logger.Printf("Database mode: %s\n", *dbMode)
 
@@ -54,7 +66,7 @@ func main() {
 	logger.Println("\n📦 Initializing components...")
 
 	// 1. Database layer
-	var db database.CadastreDB
+	var db service.CadastreDB
 	if *dbMode == "postgres" {
 		logger.Println("  → Connecting to PostgreSQL...")
 		pgdb, err := database.NewPostgresDB(*dbConn, logger)
@@ -117,7 +129,23 @@ func main() {
 	// Health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		fmt.Fprintf(w, `{"status":"ok","service":"cadastre-server","timestamp":"%s"}`, time.Now().Format(time.RFC3339))
+	})
+
+	// CORS middleware wrapper
+	corsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		mux.ServeHTTP(w, r)
 	})
 
 	logger.Println("  ✓ GET  /api/v1/cadastre/tiles/{z}/{x}/{y}")
@@ -134,11 +162,11 @@ func main() {
 		loadDemoData(ctx, adapter, logger)
 	}
 
-	// Start HTTP server
+	// Start HTTP server with CORS enabled
 	logger.Printf("\n🌐 Starting HTTP server on port %d...\n", *port)
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", *port),
-		Handler:      mux,
+		Handler:      corsHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
