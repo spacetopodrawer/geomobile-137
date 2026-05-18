@@ -272,7 +272,7 @@ func (ml *MobileLoader) Load(doc *GLTFDocument) (PlatformAsset, error) {
 	}
 
 	// Heavy compression for mobile (slower networks)
-	compressor := NewCompressor(10)
+	compressor := NewCompressor(9)  // Max valid gzip level is 9
 	compressed, err := compressor.CompressGLTF(optimized)
 	if err != nil {
 		return nil, err
