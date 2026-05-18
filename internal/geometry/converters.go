@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-
-	"github.com/go-echarts/go-echarts/v2/charts"
 )
 
 // GeometryFormat represents supported input formats
@@ -20,59 +18,59 @@ const (
 
 // GLTFDocument represents a unified glTF 2.0 geometry document
 type GLTFDocument struct {
-	Meshes      []*GLTFMesh      `json:"meshes"`
-	Materials   []*GLTFMaterial  `json:"materials"`
-	Nodes       []*GLTFNode      `json:"nodes"`
-	Geometries  []*GLTFGeometry  `json:"geometries"`
+	Meshes      []*GLTFMesh            `json:"meshes"`
+	Materials   []*GLTFMaterial        `json:"materials"`
+	Nodes       []*GLTFNode            `json:"nodes"`
+	Geometries  []*GLTFGeometry        `json:"geometries"`
 	Metadata    map[string]interface{} `json:"metadata"`
-	BoundingBox *BoundingBox     `json:"bounding_box"`
-	LODLevels   []*LODLevel      `json:"lod_levels"`
+	BoundingBox *BoundingBox           `json:"bounding_box"`
+	LODLevels   []*LODLevel            `json:"lod_levels"`
 }
 
 // GLTFMesh represents a glTF mesh primitive
 type GLTFMesh struct {
-	ID            string              `json:"id"`
-	Name          string              `json:"name"`
-	Vertices      []float32           `json:"vertices"`      // x,y,z interleaved
-	Normals       []float32           `json:"normals"`       // x,y,z interleaved
-	TexCoords     []float32           `json:"tex_coords"`    // u,v interleaved
-	Indices       []uint32            `json:"indices"`
+	ID            string                 `json:"id"`
+	Name          string                 `json:"name"`
+	Vertices      []float32              `json:"vertices"`   // x,y,z interleaved
+	Normals       []float32              `json:"normals"`    // x,y,z interleaved
+	TexCoords     []float32              `json:"tex_coords"` // u,v interleaved
+	Indices       []uint32               `json:"indices"`
 	Attributes    map[string]interface{} `json:"attributes"` // Custom: parcel_id, owner, area, etc.
-	Material      *GLTFMaterial       `json:"material"`
-	VertexCount   int                 `json:"vertex_count"`
-	TriangleCount int                 `json:"triangle_count"`
+	Material      *GLTFMaterial          `json:"material"`
+	VertexCount   int                    `json:"vertex_count"`
+	TriangleCount int                    `json:"triangle_count"`
 }
 
 // GLTFMaterial represents material properties
 type GLTFMaterial struct {
-	ID            string     `json:"id"`
-	Name          string     `json:"name"`
-	Color         [4]float32 `json:"color"` // RGBA
-	Metallic      float32    `json:"metallic"`
-	Roughness     float32    `json:"roughness"`
-	NormalMap     string     `json:"normal_map_url,omitempty"`
-	AmbientOcclusion float32 `json:"ambient_occlusion"`
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Color            [4]float32 `json:"color"` // RGBA
+	Metallic         float32    `json:"metallic"`
+	Roughness        float32    `json:"roughness"`
+	NormalMap        string     `json:"normal_map_url,omitempty"`
+	AmbientOcclusion float32    `json:"ambient_occlusion"`
 }
 
 // GLTFNode represents a transform node
 type GLTFNode struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	MeshID       string    `json:"mesh_id"`
-	Translation  [3]float64 `json:"translation"`
-	Rotation     [4]float32 `json:"rotation"` // Quaternion
-	Scale        [3]float32 `json:"scale"`
-	Children     []string  `json:"children,omitempty"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	MeshID      string     `json:"mesh_id"`
+	Translation [3]float64 `json:"translation"`
+	Rotation    [4]float32 `json:"rotation"` // Quaternion
+	Scale       [3]float32 `json:"scale"`
+	Children    []string   `json:"children,omitempty"`
 }
 
 // GLTFGeometry represents geometric data
 type GLTFGeometry struct {
-	ID         string    `json:"id"`
-	Format     string    `json:"format"`      // Source format
-	SourcePath string    `json:"source_path"`
-	Vertices   int       `json:"vertices"`
-	Triangles  int       `json:"triangles"`
-	FileSize   int64     `json:"file_size_bytes"`
+	ID         string `json:"id"`
+	Format     string `json:"format"` // Source format
+	SourcePath string `json:"source_path"`
+	Vertices   int    `json:"vertices"`
+	Triangles  int    `json:"triangles"`
+	FileSize   int64  `json:"file_size_bytes"`
 }
 
 // BoundingBox represents spatial bounds
@@ -87,11 +85,11 @@ type BoundingBox struct {
 
 // LODLevel represents a Level-of-Detail version
 type LODLevel struct {
-	Level        int      `json:"level"` // 0=high, 1=medium, 2=low
-	VertexCount  int      `json:"vertex_count"`
-	TriangleCount int     `json:"triangle_count"`
-	FileSizeBytes int64   `json:"file_size_bytes"`
-	MeshIDs      []string `json:"mesh_ids"`
+	Level         int      `json:"level"` // 0=high, 1=medium, 2=low
+	VertexCount   int      `json:"vertex_count"`
+	TriangleCount int      `json:"triangle_count"`
+	FileSizeBytes int64    `json:"file_size_bytes"`
+	MeshIDs       []string `json:"mesh_ids"`
 }
 
 // GeoJSONConverter converts GeoJSON features to glTF
@@ -189,7 +187,7 @@ func (gc *GeoJSONConverter) ToGLTF() (*GLTFDocument, error) {
 		bbox.MinY = math.Min(bbox.MinY, area*0.001)
 		bbox.MaxY = math.Max(bbox.MaxY, area*0.002)
 
-		mesh.VertexCount = 4  // Simplified: would be parsed from geometry
+		mesh.VertexCount = 4   // Simplified: would be parsed from geometry
 		mesh.TriangleCount = 2 // Simplified: would be calculated
 
 		vertexCount += mesh.VertexCount
