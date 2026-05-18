@@ -307,7 +307,7 @@ func Dequantize(vertices []float32, precision int) []float32 {
 	dequantized := make([]float32, len(vertices))
 
 	for i, v := range vertices {
-		dequantized[i] = v / factor
+		dequantized[i] = v * factor  // Multiply to undo quantization division
 	}
 
 	return dequantized

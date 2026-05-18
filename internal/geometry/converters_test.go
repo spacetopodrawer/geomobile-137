@@ -353,12 +353,13 @@ func TestVertexQuantization(t *testing.T) {
 	// Verify round-trip with minimal error
 	for i, v := range vertices {
 		error := dequantized[i] - v
-		// 16-bit quantization has precision loss ~ 1/65536 per unit
-		// For values > 1, absolute error can be 0.001-0.01 range
-		if error < -0.1 || error > 0.1 {
-			t.Errorf("Quantization error too large at index %d: %f", i, error)
+		// 16-bit quantization has precision of ~1/65536 ≈ 0.0000153
+		// Allow for rounding errors: tolerance = 1.0 / (2^16) = 0.0001525...
+		tolerance := float32(1.0 / (1 << uint(16)))
+		if error < -tolerance*2 || error > tolerance*2 {
+			t.Errorf("Quantization error too large at index %d: %f (tolerance: %f)", i, error, tolerance)
 		}
 	}
 
-	t.Logf("✓ Vertex Quantization: Precision loss < 0.1 (16-bit quantization)")
+	t.Logf("✓ Vertex Quantization: Round-trip precision validated (16-bit)")
 }
