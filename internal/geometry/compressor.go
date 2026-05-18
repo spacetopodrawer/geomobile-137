@@ -197,8 +197,8 @@ func (c *Compressor) decompressMesh(buf *bytes.Reader) (*GLTFMesh, error) {
 type CompressionStatistics struct {
 	OriginalSize     int64   `json:"original_size_bytes"`
 	CompressedSize   int64   `json:"compressed_size_bytes"`
-	CompressionRatio float64 `json:"compression_ratio"`      // Compressed / Original
-	SavingsPercent   float64 `json:"savings_percent"`        // (1 - Ratio) * 100
+	CompressionRatio float64 `json:"compression_ratio"` // Compressed / Original
+	SavingsPercent   float64 `json:"savings_percent"`   // (1 - Ratio) * 100
 	VertexCount      int     `json:"vertex_count"`
 	TriangleCount    int     `json:"triangle_count"`
 }
@@ -291,7 +291,7 @@ func QuantizeVertices(vertices []float32, precision int) []float32 {
 
 	for i, v := range vertices {
 		// Round to nearest quantum
-		quantized[i] = math.Round(float64(v)*float64(factor)) / float64(factor)
+		quantized[i] = float32(math.Round(float64(v)*float64(factor)) / float64(factor))
 	}
 
 	return quantized

@@ -124,13 +124,13 @@ func TestCompressionRatio(t *testing.T) {
 			{
 				ID:       "mesh-1",
 				Vertices: make([]float32, 10000), // 10k vertices
-				Indices:  make([]uint32, 15000),   // 5k triangles
+				Indices:  make([]uint32, 15000),  // 5k triangles
 			},
 		},
-		Materials: []*GLTFMaterial{},
-		Nodes:     []*GLTFNode{},
+		Materials:  []*GLTFMaterial{},
+		Nodes:      []*GLTFNode{},
 		Geometries: []*GLTFGeometry{},
-		Metadata:  map[string]interface{}{},
+		Metadata:   map[string]interface{}{},
 	}
 
 	// Compress
@@ -273,7 +273,7 @@ func TestPlatformLoaders(t *testing.T) {
 		t.Logf("LoadForAllPlatforms returned error (expected): %v", err)
 	}
 
-	expectedPlatforms := 4 // UE5, Web, Mobile, WebXR
+	// expectedPlatforms := 4 // UE5, Web, Mobile, WebXR
 	if len(allAssets) >= 1 {
 		t.Logf("✓ LoadForAllPlatforms: Generated %d platform assets", len(allAssets))
 	}

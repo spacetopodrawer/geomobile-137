@@ -61,9 +61,9 @@ func (ul *UE5Loader) Load(doc *GLTFDocument) (PlatformAsset, error) {
 	}
 
 	asset := &UE5Asset{
-		ID:      "ue5_" + optimized.Geometries[0].ID,
-		Meshes:  optimized.Meshes,
-		LODs:    optimized.LODLevels,
+		ID:            "ue5_" + optimized.Geometries[0].ID,
+		Meshes:        optimized.Meshes,
+		LODs:          optimized.LODLevels,
 		NaniteEnabled: len(optimized.Meshes) > 0 && optimized.Meshes[0].TriangleCount > 1000,
 	}
 
@@ -109,7 +109,7 @@ func (ul *UE5Loader) OptimizeForPlatform(doc *GLTFDocument) (*GLTFDocument, erro
 type UE5Asset struct {
 	ID            string
 	Meshes        []*GLTFMesh
-	LODs           []*LODLevel
+	LODs          []*LODLevel
 	NaniteEnabled bool
 	Materials     []*GLTFMaterial
 }
@@ -171,9 +171,9 @@ func (wl *WebLoader) Load(doc *GLTFDocument) (PlatformAsset, error) {
 	}
 
 	asset := &WebAsset{
-		ID:              "web_" + optimized.Geometries[0].ID,
-		Meshes:          optimized.Meshes,
-		CompressedSize:  int64(len(compressed)),
+		ID:               "web_" + optimized.Geometries[0].ID,
+		Meshes:           optimized.Meshes,
+		CompressedSize:   int64(len(compressed)),
 		CompressionRatio: float64(len(compressed)) / float64(len(optimized.Meshes[0].Vertices)*4),
 	}
 
@@ -220,9 +220,9 @@ func (wl *WebLoader) OptimizeForPlatform(doc *GLTFDocument) (*GLTFDocument, erro
 
 // WebAsset represents a web-optimized asset
 type WebAsset struct {
-	ID                string
-	Meshes            []*GLTFMesh
-	CompressedSize    int64
+	ID               string
+	Meshes           []*GLTFMesh
+	CompressedSize   int64
 	CompressionRatio float64
 }
 
@@ -279,11 +279,11 @@ func (ml *MobileLoader) Load(doc *GLTFDocument) (PlatformAsset, error) {
 	}
 
 	asset := &MobileAsset{
-		ID:                "mobile_" + optimized.Geometries[0].ID,
-		Meshes:            optimized.Meshes,
-		CompressedSize:    int64(len(compressed)),
+		ID:               "mobile_" + optimized.Geometries[0].ID,
+		Meshes:           optimized.Meshes,
+		CompressedSize:   int64(len(compressed)),
 		CompressionRatio: float64(len(compressed)) / float64(len(optimized.Meshes[0].Vertices)*4),
-		TargetPlatforms:   []string{"iOS", "Android"},
+		TargetPlatforms:  []string{"iOS", "Android"},
 	}
 
 	log.Printf("✓ Mobile Asset loaded: %d meshes, %dKB compressed (%.1f%%), targets: %v",
@@ -326,11 +326,11 @@ func (ml *MobileLoader) OptimizeForPlatform(doc *GLTFDocument) (*GLTFDocument, e
 
 // MobileAsset represents a mobile-optimized asset
 type MobileAsset struct {
-	ID                string
-	Meshes            []*GLTFMesh
-	CompressedSize    int64
+	ID               string
+	Meshes           []*GLTFMesh
+	CompressedSize   int64
 	CompressionRatio float64
-	TargetPlatforms   []string
+	TargetPlatforms  []string
 }
 
 func (ma *MobileAsset) GetID() string {

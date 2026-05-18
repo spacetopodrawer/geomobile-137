@@ -136,7 +136,7 @@ func (gc *GeoJSONConverter) ToGLTF() (*GLTFDocument, error) {
 	triangleCount := 0
 
 	// Process each feature (parcel)
-	for i, f := range features {
+	for _, f := range features {
 		feature, ok := f.(map[string]interface{})
 		if !ok {
 			continue
@@ -197,13 +197,14 @@ func (gc *GeoJSONConverter) ToGLTF() (*GLTFDocument, error) {
 	}
 
 	doc.BoundingBox = bbox
+	jsonData, _ := json.Marshal(gc.Data)
 	doc.Geometries = append(doc.Geometries, &GLTFGeometry{
 		ID:         "geojson_source",
 		Format:     "geojson",
 		SourcePath: gc.SourcePath,
 		Vertices:   vertexCount,
 		Triangles:  triangleCount,
-		FileSize:   int64(len(json.Marshal(gc.Data))),
+		FileSize:   int64(len(jsonData)),
 	})
 
 	return doc, nil
