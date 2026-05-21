@@ -89,11 +89,11 @@ func (m *MockDB) DeleteEntity(ctx context.Context, code string) error {
 }
 
 // GetEntitiesByBBox retrieves entities within a bbox (simplified mock)
-func (m *MockDB) GetEntitiesByBBox(ctx context.Context, minX, minY, maxX, maxY float64, zoomLevel int) ([]cadastre.Entity, error) {
+func (m *MockDB) GetEntitiesByBBox(ctx context.Context, minX, minY, maxX, maxY float64, zoomLevel int) ([]interface{}, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	entities := make([]cadastre.Entity, 0)
+	entities := make([]interface{}, 0)
 	for _, entity := range m.entities {
 		entities = append(entities, *entity)
 	}

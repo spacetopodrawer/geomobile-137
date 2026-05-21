@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"cadastre_ia/pkg/quest"
 )
@@ -233,8 +234,9 @@ func (qh *QuestHandler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	limit := 100
 	if limitStr != "" {
-		// Parse limit from query parameter
-		_, _ = json.Unmarshal([]byte(limitStr), &limit)
+		if parsed, err := strconv.Atoi(limitStr); err == nil {
+			limit = parsed
+		}
 		if limit > 1000 {
 			limit = 1000 // Cap at 1000
 		}

@@ -4,14 +4,54 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { setUserId } from './redux/slices/authSlice';
 import { RootState } from './redux/store';
 import ErrorBoundary from './components/Common/ErrorBoundary';
-import Header from './components/Navigation/Header';
-import QuestsPage from './pages/QuestsPage';
-import MapPage from './pages/MapPage';
-import ShopPage from './pages/ShopPage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import ProfilePage from './pages/ProfilePage';
+import { WebSocketStatus } from './components/WebSocketStatus';
+import { PresenceList } from './components/PresenceList';
+import { ActivityStream } from './components/ActivityStream';
+import { useWebSocket } from './hooks/useWebSocket';
+import { usePresenceStore } from './stores/presenceStore';
+import { LoginPage } from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 
-const LoginPage = () => <div className="p-8"><h2 className="text-2xl font-bold">Login</h2></div>;
+/**
+ * AuthenticatedApp — rendu uniquement après login.
+ * Le WebSocket se connecte ici, jamais sur la page Login.
+ */
+const AuthenticatedApp: React.FC = () => {
+  const wsStore = useWebSocket();
+  const { connect } = wsStore;
+  const addUser = usePresenceStore((state) => state.addUser);
+
+  // Connexion WS au montage (une seule fois)
+  useEffect(() => {
+    connect();
+  }, []);
+
+  // Ajouter l'utilisateur courant à la liste de présence
+  useEffect(() => {
+    if (wsStore.connected) {
+      addUser({
+        deviceId: wsStore.deviceId,
+        userId: wsStore.userId,
+        status: 'active',
+        lastSeen: Date.now(),
+      });
+    }
+  }, [wsStore.connected, wsStore.deviceId, wsStore.userId]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Routes>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+      {/* Overlays WebSocket — uniquement pour les utilisateurs connectés */}
+      <WebSocketStatus />
+      <PresenceList />
+      <ActivityStream />
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   const dispatch = useDispatch();
@@ -40,19 +80,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Header />
-          <main className="max-w-7xl mx-auto">
-            <Routes>
-              <Route path="/quests" element={<QuestsPage />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/shop" element={<ShopPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/" element={<Navigate to="/quests" replace />} />
-            </Routes>
-          </main>
-        </div>
+        <AuthenticatedApp />
       </Router>
     </ErrorBoundary>
   );

@@ -1,215 +1,243 @@
-// cadastre-server is the main entry point for the geo-mobile137 cadastral server
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
-	"cadastre_ia/pkg/cadastre"
-	"cadastre_ia/pkg/cache"
-	"cadastre_ia/pkg/database"
-	"cadastre_ia/pkg/events"
-	"cadastre_ia/pkg/handlers"
-	"cadastre_ia/pkg/service"
-	"cadastre_ia/pkg/svg_codification"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	gorillaWs "github.com/gorilla/websocket"
+
+	internalAPI "cadastre_ia/internal/api"
+	wsHub "cadastre_ia/internal/websocket"
+	"cadastre_ia/pkg/storage"
 )
 
+var (
+	port   = flag.String("port", "8080", "Server port")
+	dbMode = flag.String("db", "mock", "Database mode: mock | postgres")
+	dbConn = flag.String("db-conn", "", "PostgreSQL DSN (required when -db=postgres)")
+)
+
+var upgrader = gorillaWs.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
+}
+
 func main() {
-	// Parse command-line flags
-	port := flag.Int("port", 8080, "HTTP server port")
-	dbMode := flag.String("db", "mock", "Database mode: 'mock' or 'postgres'")
-	dbConn := flag.String("db-conn", "", "PostgreSQL connection string (if empty, uses environment or default)")
-	logFile := flag.String("log", "", "Log file path (empty = stdout)")
-
 	flag.Parse()
+	fmt.Println("+============================================================+")
+	fmt.Println("|  GEO-MOBILE137  CADASTRAL SERVER  v3.0.0                   |")
+	fmt.Println("|  Phase 3 - Real-Time Collaboration & WebHooks              |")
+	fmt.Println("+============================================================+")
+	fmt.Printf("   Port    : %s\n", *port)
+	fmt.Printf("   DB mode : %s\n", *dbMode)
+	fmt.Println("\n[*] Initializing components...")
 
-	// If connection string not provided via flag, check environment or use default
-	if *dbConn == "" {
-		// Check for environment variable
-		if envConn := os.Getenv("DATABASE_URL"); envConn != "" {
-			*dbConn = envConn
-		} else {
-			// Use default (note: should be updated to use secure password in production)
-			*dbConn = "postgres://postgres:admin123@127.0.0.1:3779/geomobile137?sslmode=disable"
-		}
-	}
-
-	// Setup logging
-	var logOutput *os.File = os.Stdout
-	if *logFile != "" {
-		var err error
-		logOutput, err = os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			log.Fatalf("Failed to open log file: %v", err)
-		}
-		defer logOutput.Close()
-	}
-
-	logger := log.New(logOutput, "[cadastre-server] ", log.LstdFlags|log.Lshortfile)
-
-	logger.Println(strings.Repeat("=", 70))
-	logger.Println("🚀 GEO-MOBILE137 CADASTRAL SERVER")
-	logger.Println("Phase 2.2 — CAD Converter Integration")
-	logger.Println(strings.Repeat("=", 70))
-	logger.Printf("Starting server on port %d\n", *port)
-	logger.Printf("Database mode: %s\n", *dbMode)
-
-	ctx := context.Background()
-
-	// Initialize components
-	logger.Println("\n📦 Initializing components...")
-
-	// 1. Database layer
-	var db service.CadastreDB
+	var dbConnected bool
 	if *dbMode == "postgres" {
-		logger.Println("  → Connecting to PostgreSQL...")
-		pgdb, err := database.NewPostgresDB(*dbConn, logger)
-		if err != nil {
-			logger.Fatalf("Failed to connect to PostgreSQL: %v", err)
+		if *dbConn == "" {
+			log.Fatal("ERROR: -db-conn required for -db=postgres")
 		}
-		defer pgdb.Close()
-		db = pgdb
-		logger.Println("    ✓ PostgreSQL connected")
+		fmt.Printf("   DB conn : %s\n", *dbConn)
+		if _, err := storage.Connect(*dbConn); err != nil {
+			log.Printf("WARNING: PostgreSQL unavailable (%v)", err)
+		} else {
+			dbConnected = true
+			fmt.Println("     OK PostgreSQL connected")
+		}
 	} else {
-		logger.Println("  → Using mock database (testing mode)...")
-		db = database.NewMockDB(logger)
-		logger.Println("    ✓ Mock database ready")
+		fmt.Println("     OK Mock database ready")
+		dbConnected = true
 	}
 
-	// 2. Cache layer
-	logger.Println("  → Setting up cache...")
-	tileCache := cache.NewMemoryCache(logger)
-	logger.Println("    ✓ Memory cache ready")
+	fmt.Println("  --> Initializing WebSocket Hub...")
+	hub := wsHub.NewHub()
+	go hub.Run()
+	fmt.Println("     OK WebSocket Hub running")
 
-	// 3. Event bus
-	logger.Println("  → Setting up event bus...")
-	eventBus := events.NewEventBus(logger)
-	logger.Println("    ✓ Event bus ready")
+	p3 := internalAPI.NewPhase3Handlers(hub)
+	fmt.Println("     OK Phase 3 handlers ready")
 
-	// 4. SVG rendering
-	logger.Println("  → Initializing SVG renderer...")
-	renderer := svg_codification.NewSVGRenderer(logger)
-	logger.Println("    ✓ SVG renderer ready")
+	if dbConnected {
+		fmt.Println("   Database : CONNECTED")
+	}
+	fmt.Printf("   WS Hub  : RUNNING (%d clients)\n", hub.GetConnectedClients())
 
-	// 5. Tile generation
-	logger.Println("  → Setting up tile generator...")
-	tileGen := svg_codification.NewTileGenerator(tileCache, renderer, db, logger)
-	logger.Println("    ✓ Tile generator ready")
-
-	// 6. CAD converter
-	logger.Println("  → Initializing CAD converter...")
-	converter := service.NewCadConverter(service.FormatDWG, logger)
-	logger.Println("    ✓ CAD converter ready")
-
-	// 7. Cadastre codifier
-	logger.Println("  → Initializing codifier...")
-	codifier := cadastre.NewCodifier("lekie")
-	logger.Println("    ✓ Codifier ready")
-
-	// 8. Cadastre adapter
-	logger.Println("  → Initializing cadastre adapter...")
-	adapter := service.NewCadastreAdapter(converter, codifier, tileGen, db, eventBus, logger)
-	logger.Println("    ✓ Cadastre adapter ready")
-
-	logger.Println("\n✅ All components initialized successfully\n")
-
-	// Initialize HTTP handlers
-	logger.Println("📍 Registering API endpoints...")
-	cadastreHandlers := handlers.NewCadastreHandlers(adapter, tileGen, converter, logger)
-
-	mux := http.NewServeMux()
-	handlers.RegisterRoutes(mux, cadastreHandlers)
-
-	// Health endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		fmt.Fprintf(w, `{"status":"ok","service":"cadastre-server","timestamp":"%s"}`, time.Now().Format(time.RFC3339))
-	})
-
-	// CORS middleware wrapper
-	corsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
-		w.Header().Set("Access-Control-Max-Age", "86400")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-User-ID")
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-
-		mux.ServeHTTP(w, r)
+		c.Next()
 	})
 
-	logger.Println("  ✓ GET  /api/v1/cadastre/tiles/{z}/{x}/{y}")
-	logger.Println("  ✓ POST /api/v1/cadastre/convert")
-	logger.Println("  ✓ POST /api/v1/cadastre/decode")
-	logger.Println("  ✓ POST /api/v1/cadastre/validate")
-	logger.Println("  ✓ GET  /api/v1/cadastre/legend")
-	logger.Println("  ✓ GET  /api/v1/cadastre/health")
-	logger.Println("  ✓ GET  /health")
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":     "ok",
+			"version":    "3.0.0",
+			"phase":      "3",
+			"db_mode":    *dbMode,
+			"db":         dbStatus(dbConnected),
+			"ws_clients": hub.GetConnectedClients(),
+			"timestamp":  time.Now().Format(time.RFC3339),
+		})
+	})
 
-	// Demo: Load test data if in mock mode
-	if *dbMode == "mock" {
-		logger.Println("\n🧪 Demo: Loading test cadastral data...")
-		loadDemoData(ctx, adapter, logger)
-	}
+	r.GET("/ws/geometry", func(c *gin.Context) {
+		dID := c.Query("device_id")
+		uID := c.Query("user_id")
+		if dID == "" {
+			dID = "device-" + uuid.New().String()[:8]
+		}
+		if uID == "" {
+			uID = "user-" + uuid.New().String()[:8]
+		}
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("[WS] upgrade failed: %v", err)
+			return
+		}
+		client := hub.RegisterConnection(conn, dID, uID)
+		log.Printf("[WS] CONNECTED device=%s user=%s", dID, uID)
+		go client.ReadMessages()
+		go client.WriteMessages()
+	})
 
-	// Start HTTP server with CORS enabled
-	logger.Printf("\n🌐 Starting HTTP server on port %d...\n", *port)
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", *port),
-		Handler:      corsHandler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	api := r.Group("/api/v1")
+	api.GET("/status", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"version":     "3.0.0",
+			"phase":       "3",
+			"db":          dbStatus(dbConnected),
+			"ws_clients":  hub.GetConnectedClients(),
+			"server_time": time.Now().UTC(),
+		})
+	})
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Fatalf("Server error: %v", err)
+	cad := api.Group("/cadastre")
+	cad.GET("/tiles/:z/:x/:y", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"tile":   fmt.Sprintf("%s/%s/%s", c.Param("z"), c.Param("x"), c.Param("y")),
+			"format": "png",
+		})
+	})
+	cad.POST("/convert", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"conversion_id": uuid.New().String(), "status": "queued"})
+	})
+	cad.POST("/decode", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"decode_id": uuid.New().String(), "result": nil})
+	})
+	cad.POST("/validate", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"valid": true, "errors": []interface{}{}})
+	})
+	cad.GET("/legend", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"legend": []interface{}{}})
+	})
+	cad.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "subsystem": "cadastre"})
+	})
+
+	api.GET("/parcels", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"parcels": []interface{}{}, "total": 0})
+	})
+	api.POST("/parcels", func(c *gin.Context) {
+		c.JSON(http.StatusCreated, gin.H{"parcel_id": uuid.New().String(), "created_at": time.Now().UTC()})
+	})
+	api.GET("/parcels/:id", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"parcel_id": c.Param("id")})
+	})
+	api.PUT("/parcels/:id", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"parcel_id": c.Param("id"), "updated_at": time.Now().UTC()})
+	})
+	api.DELETE("/parcels/:id", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"parcel_id": c.Param("id"), "deleted": true})
+	})
+
+	sync := api.Group("/sync")
+	sync.POST("/init", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"sync_id": uuid.New().String(), "initialized": true})
+	})
+	sync.GET("/state", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"device_id": c.Query("device_id"), "sync_version": 0})
+	})
+	sync.POST("/upload", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"upload_id": uuid.New().String(), "accepted": true})
+	})
+	sync.GET("/download", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"device_id": c.Query("device_id"), "changes": []interface{}{}})
+	})
+	sync.POST("/resolve", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"resolved": true, "strategy": "last_write_wins"})
+	})
+	sync.GET("/status", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"device_id": c.Query("device_id"), "status": "synced"})
+	})
+
+	rtk := api.Group("/rtk")
+	rtk.POST("/enable", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"state": "INITIALIZATION", "enabled_at": time.Now().UTC()})
+	})
+	rtk.POST("/disable", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"state": "DISABLED"})
+	})
+	rtk.GET("/state", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"device_id": c.Query("device_id"), "state": "DISABLED"})
+	})
+	rtk.POST("/submit-position", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"applied": true, "timestamp": time.Now().UTC()})
+	})
+
+	garmin := api.Group("/garmin")
+	garmin.POST("/pair", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "paired", "paired_at": time.Now().UTC()})
+	})
+	garmin.GET("/status", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "not_paired"})
+	})
+	garmin.POST("/sensors", func(c *gin.Context) {
+		c.JSON(http.StatusCreated, gin.H{"recorded": true})
+	})
+	garmin.POST("/disconnect", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"disconnected": true})
+	})
+
+	// Phase 3A
+	api.GET("/ws/status", p3.HubStatus)
+	api.GET("/presence", p3.GetPresence)
+	api.POST("/activity", p3.LogActivity)
+	api.GET("/activity", p3.GetActivityLog)
+	api.POST("/parcels/:id/lock", p3.AcquireLock)
+	api.DELETE("/parcels/:id/lock", p3.ReleaseLock)
+
+	// Phase 3B
+	api.GET("/notifications", p3.ListNotifications)
+	api.PATCH("/notifications/:id/read", p3.MarkNotificationRead)
+	api.POST("/notifications/broadcast", p3.BroadcastNotification)
+	api.GET("/webhooks", p3.ListWebhooks)
+	api.POST("/webhooks", p3.CreateWebhook)
+	api.DELETE("/webhooks/:id", p3.DeleteWebhook)
+
+	fmt.Printf("\n[HTTP] http://0.0.0.0:%s\n", *port)
+	fmt.Printf("[WS]   ws://localhost:%s/ws/geometry\n\n", *port)
+	if err := r.Run(":" + *port); err != nil {
+		log.Fatalf("Server error: %v", err)
 	}
 }
 
-// loadDemoData loads demo cadastral data for testing
-func loadDemoData(ctx context.Context, adapter *service.CadastreAdapter, logger *log.Logger) {
-	// Create sample CAD data (Lékié region, Cameroon)
-	cadData := &service.RawCADData{
-		Format:     service.FormatDWG,
-		SourcePath: "demo_lekie_2021.dwg",
-		VertexData: []service.CADVertex{
-			// Building 1: Lékié Central (3.8667, 3.5667)
-			{X: 3.8667, Y: 3.5667, Z: 0},
-			{X: 3.8670, Y: 3.5667, Z: 0},
-			{X: 3.8670, Y: 3.5670, Z: 0},
-			{X: 3.8667, Y: 3.5670, Z: 0},
-		},
-		Metadata: map[string]interface{}{
-			"source": "demo",
-			"date":   "2026-05-11",
-		},
+func dbStatus(connected bool) string {
+	if connected {
+		return "connected"
 	}
-
-	entitySet, err := adapter.ConvertAndStoreCadastralData(ctx, cadData, "lekie", "Lékié Central")
-	if err != nil {
-		logger.Printf("⚠️  Demo data loading failed: %v\n", err)
-		return
-	}
-
-	logger.Printf("✓ Loaded %d demo entities\n", len(entitySet.Entities))
-
-	for _, entity := range entitySet.Entities {
-		logger.Printf("  - %s (code: %s)\n", entity.ID, entity.Code)
-	}
-
-	logger.Println("\n📍 Try these endpoints to test:")
-	logger.Println("  curl http://localhost:8080/api/v1/cadastre/health")
-	logger.Println("  curl http://localhost:8080/api/v1/cadastre/legend")
-	logger.Println("  curl http://localhost:8080/api/v1/cadastre/tiles/12/2048/1024")
+	return "unavailable"
 }

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"cadastreia/backend/internal/api"
-	"cadastreia/backend/internal/config"
-	"cadastreia/backend/internal/storage"
-	"cadastreia/backend/internal/websocket"
+	"cadastre_ia/internal/api"
+	"cadastre_ia/internal/config"
+	"cadastre_ia/internal/storage"
+	"cadastre_ia/internal/websocket"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,20 +20,37 @@ import (
 )
 
 func main() {
+	// Parse command-line flags
+	port := flag.String("port", "8080", "HTTP server port")
+	dbMode := flag.String("db", "mock", "Database mode: 'mock' or 'postgres'")
+	flag.Parse()
+
+	log.Printf("🚀 GEO-MOBILE137 CADASTRAL SERVER")
+	log.Printf("📡 Port: %s | DB Mode: %s", *port, *dbMode)
+
 	// Load configuration
 	cfg := config.LoadConfig()
 
-	// Initialize database connection pool
-	dbPool, err := initDatabase(cfg)
-	if err != nil {
-		log.Fatalf("❌ Failed to initialize database: %v", err)
-	}
-	defer dbPool.Close()
-	log.Printf("✅ Database connection established")
+	// Initialize database based on mode
+	var dbPool *pgxpool.Pool
+	var err error
+	var store *storage.Storage
 
-	// Create storage layer
-	store := storage.NewStorage(dbPool)
-	defer store.Close()
+	if *dbMode == "postgres" {
+		log.Printf("📦 Connecting to PostgreSQL...")
+		dbPool, err = initDatabase(cfg)
+		if err != nil {
+			log.Fatalf("❌ Failed to initialize database: %v", err)
+		}
+		defer dbPool.Close()
+		log.Printf("✅ PostgreSQL connection established")
+		store = storage.NewStorage(dbPool)
+		defer store.Close()
+	} else {
+		log.Printf("📦 Using mock database (test mode)...")
+		store = &storage.Storage{}
+		log.Printf("✅ Mock database ready")
+	}
 
 	// Initialize WebSocket hub
 	wsHub := websocket.NewHub()

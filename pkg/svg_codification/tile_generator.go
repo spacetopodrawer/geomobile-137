@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 )
 
 // TileGenerator creates SVG tiles from cadastral entities with three-level caching
@@ -187,7 +188,7 @@ func getBoundingTiles(z int, bbox *BoundingBox) []TileCoord {
 
 // tileToLatLon converts XYZ tile coordinates to geographic bounding box
 func tileToLatLon(z, x, y int) *BoundingBox {
-	n := float64(1 << uint(z))
+	n := float64(int64(1) << uint(z))
 	lonMin := float64(x)/n*360.0 - 180.0
 	lonMax := float64(x+1)/n*360.0 - 180.0
 
@@ -210,13 +211,13 @@ func tileToLatLon(z, x, y int) *BoundingBox {
 
 // latLonToTile converts geographic coordinates to XYZ tile coordinates
 func latLonToTile(z int, lon, lat float64) TileCoord {
-	n := float64(1 << uint(z))
+	n := float64(int64(1) << uint(z))
 
 	// Convert to radians
 	latRad := lat * 3.141592653589793 / 180.0
 
 	x := int(n * (lon + 180.0) / 360.0)
-	y := int(n * (1.0 - (log(tan(latRad)+1.0/cos(latRad)) / 3.141592653589793) / 2.0) / 2.0)
+	y := int(n * (1.0 - (math.Log(math.Tan(latRad)+1.0/math.Cos(latRad)) / 3.141592653589793) / 2.0) / 2.0)
 
 	return TileCoord{Z: z, X: x, Y: y}
 }
@@ -243,7 +244,7 @@ func cos(x float64) float64 {
 	return 1.0 - (x*x)/2.0 + (x*x*x*x)/24.0
 }
 
-func log(x float64) float64 {
+func logApprox(x float64) float64 {
 	// Simple approximation (use math.Log in production)
 	if x <= 0 {
 		return 0

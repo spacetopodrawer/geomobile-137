@@ -2,7 +2,6 @@ package payment
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -129,7 +128,7 @@ func (pa *PaytechAdapter) VerifyPayment(transactionID string) (*PaymentVerificat
 
 	req, err := http.NewRequest("GET", pa.baseURL+"/api/v1/transaction/check/?"+queryParams.Encode(), nil)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create verification request: %w", err)
+		return nil, fmt.Errorf("failed to create verification request: %w", err)
 	}
 
 	resp, err := pa.httpClient.Do(req)
@@ -168,7 +167,7 @@ func (pa *PaytechAdapter) VerifyPayment(transactionID string) (*PaymentVerificat
 		Status:           status,
 		Amount:           int(ptResponse.Amount * 100), // Convert back to smallest units
 		Currency:         ptResponse.Currency,
-		PaymentMethod:    convertPaytechPaymentMethod(ptResponse.PaymentMethod),
+		PaymentMethod:    string(ptResponse.PaymentMethod),
 		PaymentReference: ptResponse.Reference,
 	}
 

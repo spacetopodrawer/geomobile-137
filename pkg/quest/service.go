@@ -759,7 +759,7 @@ func (qs *QuestService) GetCosmeticByID(ctx context.Context, cosmeticID string) 
 func (qs *QuestService) updateLeaderboard(ctx context.Context, userID string, progress *UserProgress) {
 	// Run async leaderboard update
 	go func() {
-		rank, err := qs.progressRepo.GetLeaderboardPosition(ctx, userID)
+		_, err := qs.progressRepo.GetLeaderboardPosition(ctx, userID)
 		if err != nil {
 			qs.logger.Printf("Error updating leaderboard for %s: %v\n", userID, err)
 			return

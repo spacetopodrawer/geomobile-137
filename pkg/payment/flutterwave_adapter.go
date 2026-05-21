@@ -2,7 +2,6 @@ package payment
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -179,7 +178,7 @@ func (fa *FlutterwaveAdapter) VerifyPayment(transactionID string) (*PaymentVerif
 		Status:           status,
 		Amount:           int(fwResponse.Data.Amount * 100), // Convert back to smallest units
 		Currency:         fwResponse.Data.Currency,
-		PaymentMethod:    convertFlutterwavePaymentMethod(fwResponse.Data.PaymentType),
+		PaymentMethod:    string(fwResponse.Data.PaymentType),
 		PaymentReference: fwResponse.Data.FlwRef,
 	}
 

@@ -26,6 +26,7 @@ type CadastreDB interface {
 	GetEntity(ctx context.Context, code string) (*cadastre.Entity, error)
 	UpdateEntity(ctx context.Context, entity *cadastre.Entity) error
 	DeleteEntity(ctx context.Context, code string) error
+	GetEntitiesByBBox(ctx context.Context, minX, minY, maxX, maxY float64, zoomLevel int) ([]interface{}, error)
 }
 
 // EventBus defines pub/sub interface for real-time updates
@@ -101,7 +102,13 @@ func (ca *CadastreAdapter) ConvertAndStoreCadastralData(
 
 	// Step 6: Generate SVG tiles for affected geographic area
 	bbox := calculateBoundingBox(entities)
-	if err := ca.tileGen.RegenerateTiles(ctx, bbox); err != nil {
+	svgBBox := &svg_codification.BoundingBox{
+		MinX: bbox.MinX,
+		MinY: bbox.MinY,
+		MaxX: bbox.MaxX,
+		MaxY: bbox.MaxY,
+	}
+	if err := ca.tileGen.RegenerateTiles(ctx, svgBBox); err != nil {
 		ca.logger.Printf("Warning: tile generation failed (non-fatal): %v\n", err)
 		// Don't fail the whole operation if tiles fail
 	}
@@ -259,7 +266,13 @@ func (ca *CadastreAdapter) UpdateEntityFromTile(
 
 	// Regenerate affected tiles
 	bbox := calculateBoundingBox([]cadastre.Entity{*entity})
-	if err := ca.tileGen.RegenerateTiles(ctx, bbox); err != nil {
+	svgBBox := &svg_codification.BoundingBox{
+		MinX: bbox.MinX,
+		MinY: bbox.MinY,
+		MaxX: bbox.MaxX,
+		MaxY: bbox.MaxY,
+	}
+	if err := ca.tileGen.RegenerateTiles(ctx, svgBBox); err != nil {
 		ca.logger.Printf("Warning: tile regeneration failed: %v\n", err)
 	}
 

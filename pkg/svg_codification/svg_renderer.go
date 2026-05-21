@@ -46,9 +46,6 @@ func (sr *SVGRenderer) RenderTile(ctx context.Context, z, x, y int, entities []i
 
 // writeSVGHeader writes the SVG XML header with proper viewport settings
 func (sr *SVGRenderer) writeSVGHeader(buf *bytes.Buffer, z, x, y int) {
-	width := 256.0  // Standard tile size
-	height := 256.0
-
 	// SVG declaration
 	fmt.Fprintf(buf, `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">

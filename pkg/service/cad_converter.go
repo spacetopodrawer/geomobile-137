@@ -5,8 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-
-	"cadastre_ia/pkg/cadastre"
 )
 
 // CADFormat represents supported CAD file formats
